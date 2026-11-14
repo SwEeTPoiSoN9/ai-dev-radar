@@ -11,9 +11,9 @@ import requests
 HISTORY_FILE = "data/history.json"
 POSTS_DIR = "content/posts"
 
-# ✅ Valid model names — pick one that's available to your API key
-PRIMARY_MODEL = "gemini-2.5-flash"       # or "gemini-2.0-flash"
-FALLBACK_MODEL = "gemini-2.5-flash-lite"  # cheaper, more available fallback
+# ✅ Current models for NEW API keys (2.5 is deprecated for new users)
+PRIMARY_MODEL  = "gemini-3.8-flash"
+FALLBACK_MODEL = "gemini-3.5-flash-lite"
 MAX_RETRIES = 4
 BASE_DELAY = 5  # seconds
 
@@ -36,7 +36,6 @@ def get_trending_topic(history):
     top_ids = requests.get(
         "https://hacker-news.firebaseio.com/v0/topstories.json", timeout=15
     ).json()[:30]
-
     for story_id in top_ids:
         if story_id in seen_ids:
             continue
@@ -44,12 +43,8 @@ def get_trending_topic(history):
             f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json",
             timeout=15,
         ).json()
-        if (
-            item
-            and item.get("type") == "story"
-            and item.get("url")
-            and item.get("score", 0) >= 80
-        ):
+        if (item and item.get("type") == "story" and item.get("url")
+                and item.get("score", 0) >= 80):
             return item
     return None
 
@@ -61,7 +56,6 @@ def slugify(text):
 
 
 def _call_gemini(client, model, prompt):
-    """Single attempt to call Gemini, returns response text or raises."""
     response = client.models.generate_content(model=model, contents=prompt)
     return response.text
 
@@ -69,8 +63,7 @@ def _call_gemini(client, model, prompt):
 def generate_article(story, recent_posts):
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
     date_str = datetime.datetime.now(datetime.timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+        "%Y-%m-%dT%H:%M:%SZ")
     slug = slugify(story["title"])
 
     related_links = "\n".join(
@@ -107,38 +100,36 @@ def generate_article(story, recent_posts):
     - Output ONLY the raw Markdown (no ```markdown code fences wrapping the whole output).
     """
 
-    # ✅ Try primary model with retries, then fall back
-    models_to_try = [PRIMARY_MODEL, FALLBACK_MODEL]
     content = None
-
-    for model in models_to_try:
+    for model in [PRIMARY_MODEL, FALLBACK_MODEL]:
         for attempt in range(MAX_RETRIES):
             try:
                 content = _call_gemini(client, model, prompt)
-                break  # success — exit retry loop
+                break
             except errors.ServerError as e:
-                # 503 UNAVAILABLE / 429 RATE_LIMITED / 500 — retry with backoff
+                # 503/429/500 = transient overload → back off & retry SAME model
                 if e.code in (429, 500, 503) and attempt < MAX_RETRIES - 1:
                     delay = BASE_DELAY * (2 ** attempt) + random.uniform(0, 3)
-                    print(
-                        f"⚠️  {model} returned {e.code}. "
-                        f"Retrying in {delay:.1f}s "
-                        f"(attempt {attempt + 1}/{MAX_RETRIES})…"
-                    )
+                    print(f"⚠️  {model} {e.code}; retry in {delay:.1f}s "
+                          f"({attempt + 1}/{MAX_RETRIES})…")
                     time.sleep(delay)
                 else:
-                    print(f"❌ {model} failed after {MAX_RETRIES} attempts: {e}")
-                    break  # try next model
+                    print(f"❌ {model} exhausted retries ({e.code})")
+                    break
+            except errors.ClientError as e:
+                # 404/400 = model not available / bad request → do NOT retry,
+                # move straight to the fallback model
+                print(f"⚠️  {model} rejected ({e.code}): {e.message}")
+                break
             except Exception as e:
                 print(f"❌ Unexpected error with {model}: {e}")
-                break  # try next model
-
+                break
         if content:
-            break  # got a response, stop trying other models
+            break
 
     if not content:
         raise RuntimeError(
-            "All Gemini models failed. Check API key / quota at "
+            "All Gemini models failed. Verify the key & model access at "
             "https://aistudio.google.com/apikey"
         )
 
@@ -163,7 +154,6 @@ def main():
     slug, markdown_content = generate_article(story, history)
     os.makedirs(POSTS_DIR, exist_ok=True)
     filepath = os.path.join(POSTS_DIR, f"{slug}.md")
-
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(markdown_content)
 
