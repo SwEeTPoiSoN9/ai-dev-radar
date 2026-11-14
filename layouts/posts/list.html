@@ -1,0 +1,12 @@
+{{ define "main" }}
+<h2>All Posts</h2>
+<ul style="list-style:none;padding:0;">
+{{ range .Pages }}
+  <li style="margin-bottom:20px;padding-bottom:15px;border-bottom:1px solid #eee;">
+    <h3 style="margin:0 0 5px 0;"><a href="{{ .Permalink }}">{{ .Title }}</a></h3>
+    <small style="color:#666;">{{ .Date.Format "Jan 2, 2006" }}</small>
+    <p style="margin:8px 0 0 0;">{{ .Summary }}</p>
+  </li>
+{{ end }}
+</ul>
+{{ end }}
