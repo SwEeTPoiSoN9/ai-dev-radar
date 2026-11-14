@@ -93,7 +93,7 @@ def generate_article(story, recent_posts):
     """
 
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-3.8-flash",
         contents=prompt,
     )
 
