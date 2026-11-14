@@ -1,0 +1,12 @@
+{{ define "main" }}
+    <h2>Latest Tech Insights</h2>
+    <ul>
+    {{ range .Pages }}
+      <li style="margin-bottom:15px;">
+        <h3><a href="{{ .Permalink }}">{{ .Title }}</a></h3>
+        <small>{{ .Date.Format "Jan 2, 2006" }}</small>
+        <p>{{ .Summary }}</p>
+      </li>
+    {{ end }}
+    </ul>
+    {{ end }}
