@@ -2,11 +2,20 @@ import datetime
 import json
 import os
 import re
+import time
+import random
 from google import genai
+from google.genai import errors
 import requests
 
 HISTORY_FILE = "data/history.json"
 POSTS_DIR = "content/posts"
+
+# ✅ Valid model names — pick one that's available to your API key
+PRIMARY_MODEL = "gemini-2.5-flash"       # or "gemini-2.0-flash"
+FALLBACK_MODEL = "gemini-2.5-flash-lite"  # cheaper, more available fallback
+MAX_RETRIES = 4
+BASE_DELAY = 5  # seconds
 
 
 def load_history():
@@ -51,6 +60,12 @@ def slugify(text):
     return text[:65]
 
 
+def _call_gemini(client, model, prompt):
+    """Single attempt to call Gemini, returns response text or raises."""
+    response = client.models.generate_content(model=model, contents=prompt)
+    return response.text
+
+
 def generate_article(story, recent_posts):
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
     date_str = datetime.datetime.now(datetime.timezone.utc).strftime(
@@ -92,12 +107,42 @@ def generate_article(story, recent_posts):
     - Output ONLY the raw Markdown (no ```markdown code fences wrapping the whole output).
     """
 
-    response = client.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=prompt,
-    )
+    # ✅ Try primary model with retries, then fall back
+    models_to_try = [PRIMARY_MODEL, FALLBACK_MODEL]
+    content = None
 
-    content = response.text.strip()
+    for model in models_to_try:
+        for attempt in range(MAX_RETRIES):
+            try:
+                content = _call_gemini(client, model, prompt)
+                break  # success — exit retry loop
+            except errors.ServerError as e:
+                # 503 UNAVAILABLE / 429 RATE_LIMITED / 500 — retry with backoff
+                if e.code in (429, 500, 503) and attempt < MAX_RETRIES - 1:
+                    delay = BASE_DELAY * (2 ** attempt) + random.uniform(0, 3)
+                    print(
+                        f"⚠️  {model} returned {e.code}. "
+                        f"Retrying in {delay:.1f}s "
+                        f"(attempt {attempt + 1}/{MAX_RETRIES})…"
+                    )
+                    time.sleep(delay)
+                else:
+                    print(f"❌ {model} failed after {MAX_RETRIES} attempts: {e}")
+                    break  # try next model
+            except Exception as e:
+                print(f"❌ Unexpected error with {model}: {e}")
+                break  # try next model
+
+        if content:
+            break  # got a response, stop trying other models
+
+    if not content:
+        raise RuntimeError(
+            "All Gemini models failed. Check API key / quota at "
+            "https://aistudio.google.com/apikey"
+        )
+
+    content = content.strip()
     if content.startswith("```"):
         content = re.sub(r"^```[a-zA-Z]*\n", "", content)
         content = re.sub(r"\n```$", "", content)
@@ -124,9 +169,8 @@ def main():
 
     history.append({"id": story["id"], "title": story["title"], "slug": slug})
     save_history(history)
-    print(f"Published: {filepath}")
+    print(f"✅ Published: {filepath}")
 
 
 if __name__ == "__main__":
     main()
-  
