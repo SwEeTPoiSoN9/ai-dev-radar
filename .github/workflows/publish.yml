@@ -26,7 +26,7 @@ jobs:
       - name: Generate SEO Article
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/bot.py
+        run: python bot.py
 
       - name: Commit & Push New Post
         run: |
