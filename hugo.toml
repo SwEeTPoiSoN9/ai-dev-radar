@@ -1,0 +1,15 @@
+baseURL = "https://your-domain.com/"
+languageCode = "en-us"
+title = "AI Dev Radar"
+theme = "PaperMod"
+
+[params]
+  description = "Automated technical insights on trending AI & developer tools"
+  author = "AI Dev Radar Bot"
+
+[menu]
+  [[menu.main]]
+    identifier = "posts"
+    name = "Posts"
+    url = "/posts/"
+    weight = 10
