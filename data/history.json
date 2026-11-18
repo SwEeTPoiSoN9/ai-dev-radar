@@ -38,5 +38,10 @@
     "id": 50522980,
     "title": "Carnegie Mellon is putting computer science courses on YouTube for free",
     "slug": "carnegie-mellon-is-putting-computer-science-courses-on-youtube-fo"
+  },
+  {
+    "id": 50538240,
+    "title": "Java4Shell: RCE in OpenJDK when processing Base64",
+    "slug": "java4shell-rce-in-openjdk-when-processing-base64"
   }
 ]
