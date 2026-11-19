@@ -53,5 +53,10 @@
     "id": 50552424,
     "title": "Gemini 4 Neon",
     "slug": "gemini-4-neon"
+  },
+  {
+    "id": 50557870,
+    "title": "What's New in PHP 8.6",
+    "slug": "what-s-new-in-php-8-6"
   }
 ]
