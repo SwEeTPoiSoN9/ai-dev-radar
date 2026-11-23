@@ -93,5 +93,10 @@
     "id": 50605045,
     "title": "Progress map for the Lean formalization of Alessandro Masullo's manuscript",
     "slug": "progress-map-for-the-lean-formalization-of-alessandro-masullo-s-m"
+  },
+  {
+    "id": 50609685,
+    "title": "GLM-5.4: Toward Generalized Coding with Our First Loop Transformer",
+    "slug": "glm-5-4-toward-generalized-coding-with-our-first-loop-transformer"
   }
 ]
